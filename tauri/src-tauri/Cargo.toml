@@ -1,0 +1,67 @@
+[package]
+name = "pii-gui"
+version = "0.1.2"
+description = "PII GUI — local-first PII detection and redaction desktop app"
+authors = ["PII GUI <btw.sophia@gmail.com>"]
+license = "AGPL-3.0-only"
+edition = "2021"
+autobins = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "PII-GUI"
+path = "src/main.rs"
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "pii_gui_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[profile.release]
+opt-level = "z"   # size-first; ONNX inference lives in the prebuilt ort lib, unaffected
+lto = true        # cross-crate dead-code elimination
+codegen-units = 1
+strip = true      # drop the ~115k-entry symbol table
+panic = "abort"
+
+# Keep speed on the Rust-side hot paths (tokenization, regex backend, logits
+# handling) while the rest of the binary optimizes for size.
+[profile.release.package.tokenizers]
+opt-level = 3
+
+[profile.release.package.regex]
+opt-level = 3
+
+[profile.release.package.regex-automata]
+opt-level = 3
+
+[profile.release.package.ndarray]
+opt-level = 3
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2.7.1"
+tauri-plugin-os = "2.3.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+log = "0.4"
+tauri-plugin-log = "2"
+regex = "1"
+base64 = "0.22"
+ndarray = "0.17"
+ort = "2.0.0-rc.12"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
+tokenizers = { version = "0.22", default-features = false, features = ["onig"] }
+tauri-plugin-sql = { version = "2.4.0", features = ["sqlite"] }
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-single-instance = "2.4.2"

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">PII GUI app icon</title>
+  <desc id="desc">A modern privacy shield with redaction bars for sensitive information review.</desc>
+  <defs>
+    <linearGradient id="background" x1="170" y1="96" x2="860" y2="928" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0f766e"/>
+      <stop offset="0.54" stop-color="#0b2f3f"/>
+      <stop offset="1" stop-color="#070b16"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="512" y1="160" x2="512" y2="848" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f8fffc"/>
+      <stop offset="1" stop-color="#d7fff4"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="96" y="96" width="832" height="832" rx="184" fill="url(#background)"/>
+  <g transform="translate(512 512) scale(0.92) translate(-512 -512)">
+    <path d="M148 800 876 224v156L288 876H148Z" fill="#14b8a6" opacity="0.16"/>
+    <path
+      d="M512 150c74 58 166 91 276 100v244c0 160-92 288-276 384-184-96-276-224-276-384V250c110-9 202-42 276-100Z"
+      fill="url(#mark)"
+    />
+    <path
+      d="M512 150c74 58 166 91 276 100v244c0 160-92 288-276 384Z"
+      fill="#a7f3d0"
+      opacity="0.18"
+    />
+    <rect x="322" y="348" width="380" height="88" rx="44" fill="#07111f"/>
+    <rect x="322" y="488" width="300" height="88" rx="44" fill="#07111f"/>
+    <circle cx="684" cy="532" r="50" fill="#14b8a6"/>
+    <path d="M662 531l16 16 34-42" fill="none" stroke="#ecfeff" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="322" y="628" width="380" height="88" rx="44" fill="#07111f"/>
+  </g>
+</svg>

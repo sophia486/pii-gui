@@ -1,0 +1,50 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "PII GUI",
+  "mainBinaryName": "PII GUI",
+  "version": "0.1.2",
+  "identifier": "pii.wordbricks.ai",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "PII GUI",
+        "width": 1280,
+        "height": 960,
+        "minWidth": 600,
+        "minHeight": 600
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "createUpdaterArtifacts": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "sql": {
+      "preload": ["sqlite:pii-gui.db"]
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEEyRDA3RjUyRUUzOTY1MjEKUldRaFpUbnVVbi9Rb2xVbWRiWEF5azVFNHVIa1dYYzhBSDVIcm1YWkYvSGxpZW9tY1MwdTdackoK",
+      "endpoints": [
+        "https://github.com/sophia486/pii-gui/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}
