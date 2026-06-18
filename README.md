@@ -11,7 +11,7 @@ Load a PDF, markdown, or text file, detect PII with built-in rules or local ONNX
 ![Platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)
 [![Stars](https://img.shields.io/github/stars/sophia486/pii-gui?style=social)](https://github.com/sophia486/pii-gui/stargazers)
 
-[Example](#example) · [Features](#features) · [Detection Backends](#detection-backends) · [Setup](#setup) · [Development](#development) · [Roadmap](#roadmap)
+[Example](#example) · [Features](#features) · [Detection Backends](#detection-backends) · [Benchmarks](#benchmarks) · [Setup](#setup) · [Development](#development) · [Roadmap](#roadmap)
 
 ![PII GUI — Local-first PII redaction](docs/assets/pii_thumbnail.png)
 
@@ -52,6 +52,20 @@ PII GUI supports two local workflows.
 Matches are labeled with a fixed privacy taxonomy:
 
 `account_number` · `private_address` · `private_email` · `private_person` · `private_phone` · `private_url` · `private_date` · `secret`
+
+## Benchmarks
+
+OpenAI Privacy Filter ONNX inference was measured locally on an Apple M1 Max using ONNX Runtime `CPUExecutionProvider`. The benchmark uses 1024-token chunks, strips speaker-name lines, and reports the median of 3 measured repeats after 1 warmup run.
+
+| Model | Quantization | 1k latency | 1k throughput | 8k latency | 8k throughput |
+| --- | --- | ---: | ---: | ---: | ---: |
+| `openai/privacy-filter` | fp32 | 620.52 ms | 1,664 tok/s | 4,893.86 ms | 1,689 tok/s |
+| `openai/privacy-filter` | fp16 | 654.56 ms | 1,578 tok/s | 5,430.17 ms | 1,521 tok/s |
+| `openai/privacy-filter` | q4 | 582.13 ms | 1,776 tok/s | 4,635.39 ms | 1,784 tok/s |
+| `openai/privacy-filter` | q4f16 | 648.10 ms | 1,594 tok/s | 5,261.56 ms | 1,570 tok/s |
+| `openai/privacy-filter` | int8 dynamic | 573.94 ms | 1,801 tok/s | 4,594.95 ms | 1,800 tok/s |
+
+On this Apple M1 Max CPU path, the int8 dynamic and q4 variants were the fastest. fp16 and q4f16 were slower than fp32 with `CPUExecutionProvider`.
 
 ## Requirements
 
