@@ -1,0 +1,49 @@
+{
+  "taxonomy": [
+    "account_number",
+    "private_address",
+    "private_date",
+    "private_email",
+    "private_person",
+    "private_phone",
+    "private_url",
+    "secret"
+  ],
+  "regexRules": [
+    {
+      "kind": "private_email",
+      "matchIdPrefix": "private-email",
+      "replacement": "[PRIVATE_EMAIL]",
+      "pattern": "\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b",
+      "ignoreCase": true
+    },
+    {
+      "kind": "private_phone",
+      "matchIdPrefix": "private-phone",
+      "replacement": "[PRIVATE_PHONE]",
+      "pattern": "(?:\\+?1[\\s.-]?)?(?:\\(\\d{3}\\)|\\d{3})[\\s.-]?\\d{3}[\\s.-]?\\d{4}",
+      "ignoreCase": false
+    },
+    {
+      "kind": "private_url",
+      "matchIdPrefix": "private-url",
+      "replacement": "[PRIVATE_URL]",
+      "pattern": "\\b(?:https?://|www\\.)[A-Z0-9._~:/?#\\[\\]@!$&'()*+,;=%-]*[A-Z0-9/#]",
+      "ignoreCase": true
+    },
+    {
+      "kind": "private_date",
+      "matchIdPrefix": "private-date",
+      "replacement": "[PRIVATE_DATE]",
+      "pattern": "\\b(?:\\d{4}-\\d{2}-\\d{2}|\\d{1,2}/\\d{1,2}/\\d{2,4}|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\s+\\d{1,2},?\\s+\\d{4})\\b",
+      "ignoreCase": true
+    },
+    {
+      "kind": "secret",
+      "matchIdPrefix": "secret",
+      "replacement": "[SECRET]",
+      "pattern": "\\bsk_[A-Za-z0-9_]{12,}\\b",
+      "ignoreCase": false
+    }
+  ]
+}
