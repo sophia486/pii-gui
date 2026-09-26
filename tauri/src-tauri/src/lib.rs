@@ -4,9 +4,11 @@ use base64::{engine::general_purpose, Engine as _};
 use redact_engine::{RedactBackend, RedactEngine, RedactResult};
 use reqwest::blocking::Client;
 use serde::Serialize;
+use sha1::Sha1;
+use sha2::{Digest, Sha256};
 use std::{
     env, fs,
-    io::{Read, Write},
+    io::{BufReader, Read, Write},
     path::{Path, PathBuf},
     time::{Duration, Instant},
 };
@@ -339,7 +341,7 @@ fn download_model_blocking(
     for (file_index, model_file) in model.files().iter().enumerate() {
         let current_file_index = file_index + 1;
         let target_path = safe_model_file_path(&model_dir, model_file.relative_path)?;
-        if target_path.exists() {
+        if target_path.exists() && stored_model_file_is_valid(&client, model_file, &target_path) {
             bytes_written += fs::metadata(&target_path)
                 .map(|metadata| metadata.len())
                 .unwrap_or(0);
@@ -354,6 +356,16 @@ fn download_model_blocking(
                 expected_bytes,
             );
             continue;
+        }
+
+        if target_path.exists() {
+            log::warn!(
+                "stored model file failed verification: model={} file={}",
+                model.id(),
+                model_file.relative_path
+            );
+            fs::remove_file(&target_path)
+                .map_err(|error| format!("Failed to remove a stored model file: {error}"))?;
         }
 
         if let Some(parent) = target_path.parent() {
