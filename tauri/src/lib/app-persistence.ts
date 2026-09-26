@@ -159,8 +159,6 @@ export async function persistTabs(tabs: PersistedTab[], closedTabs: PersistedTab
   const db = await database();
   const now = Date.now();
 
-  await db.execute("DELETE FROM tabs");
-
   const tabRows = [
     ...tabs.map((tab, index) => ({ tab, index, isClosed: false })),
     ...closedTabs.map((tab, index) => ({ tab, index, isClosed: true })),
@@ -184,7 +182,22 @@ export async function persistTabs(tabs: PersistedTab[], closedTabs: PersistedTab
         is_closed,
         sort_order,
         updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      ON CONFLICT(id) DO UPDATE SET
+        title = excluded.title,
+        document_kind = excluded.document_kind,
+        input = excluded.input,
+        output = excluded.output,
+        matches_json = excluded.matches_json,
+        selection_json = excluded.selection_json,
+        index_format = excluded.index_format,
+        mode = excluded.mode,
+        restore_input = excluded.restore_input,
+        restore_output = excluded.restore_output,
+        pdf_document_json = excluded.pdf_document_json,
+        is_closed = excluded.is_closed,
+        sort_order = excluded.sort_order,
+        updated_at = excluded.updated_at`,
       [
         tab.id,
         tab.title,
@@ -204,6 +217,24 @@ export async function persistTabs(tabs: PersistedTab[], closedTabs: PersistedTab
       ],
     );
   }
+
+  await deleteTabsNotIn(
+    db,
+    tabRows.map(({ tab }) => tab.id),
+  );
+}
+
+async function deleteTabsNotIn(db: DatabaseConnection, keepIds: string[]) {
+  if (keepIds.length === 0) {
+    await db.execute("DELETE FROM tabs");
+    return;
+  }
+
+  const placeholders = keepIds.map((_, index) => `${index + 1}`).join(", ");
+  await db.execute(
+    `DELETE FROM tabs WHERE id NOT IN (${placeholders})`,
+    keepIds,
+  );
 }
 
 export async function persistCustomRules(rules: PiiCustomRule[]) {
@@ -273,6 +304,34 @@ export async function persistPiiTaskResult(task: PiiTaskRecord) {
       task.error ?? null,
     ],
   );
+}
+
+/**
+ * Deletes one tab's stored rows, including its saved document, and the PII
+ * result files written for it.
+ */
+export async function deleteTabRecords(tabId: string) {
+  if (!isAppPersistenceAvailable()) return;
+
+  const db = await database();
+
+  await db.execute("DELETE FROM pii_filter_results WHERE tab_id = $1", [tabId]);
+  await db.execute("DELETE FROM tabs WHERE id = $1", [tabId]);
+  await invoke("delete_local_pii_data", { tabId });
+}
+
+/**
+ * Deletes every stored document, PII result row and PII result file, so no
+ * plain-text copy of a filtered document stays on this device.
+ */
+export async function clearLocalPiiData() {
+  if (!isAppPersistenceAvailable()) return;
+
+  const db = await database();
+
+  await db.execute("DELETE FROM pii_filter_results");
+  await db.execute("DELETE FROM tabs");
+  await invoke("delete_local_pii_data", { tabId: null });
 }
 
 export async function writePiiFilterResultFile({
