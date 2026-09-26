@@ -425,7 +425,7 @@ fn download_model_blocking(
                 let _ = fs::remove_file(&temporary_path);
 
                 return Err(format!(
-                    "Checksum mismatch for {}. The downloaded file does not match the hash published by {}",
+                    "Checksum mismatch for {}. The downloaded file does not match the hash published by {}.",
                     model_file.relative_path, model_file.url
                 ));
             }
@@ -539,6 +539,74 @@ fn write_pii_filter_result(
         .map_err(|error| format!("Failed to resolve app data directory: {error}"))?;
 
     write_pii_filter_result_file(&app_data_dir, tab_id, file_name, contents)
+}
+
+#[derive(Serialize)]
+struct StoredDataDeletion {
+    removed_files: usize,
+    target_path: String,
+}
+
+/// Deletes stored document and PII result files. The paths are built from the
+/// app data directory only, so this can never reach outside it.
+#[tauri::command]
+fn delete_local_pii_data(
+    app: tauri::AppHandle,
+    tab_id: Option<String>,
+) -> Result<StoredDataDeletion, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("Failed to resolve app data directory: {error}"))?;
+    let target_path = match tab_id.as_deref() {
+        Some(tab_id) => {
+            if !is_safe_path_segment(tab_id) {
+                return Err("Tab id is invalid.".to_string());
+            }
+
+            app_data_dir.join("tabs").join(tab_id)
+        }
+        None => app_data_dir.join("tabs"),
+    };
+
+    if !target_path.starts_with(&app_data_dir) {
+        return Err("Stored data path is outside the app data directory.".to_string());
+    }
+
+    let removed_files = count_stored_files(&target_path)?;
+
+    if target_path.exists() {
+        fs::remove_dir_all(&target_path)
+            .map_err(|error| format!("Failed to delete stored data: {error}"))?;
+    }
+
+    Ok(StoredDataDeletion {
+        removed_files,
+        target_path: path_to_string(&target_path),
+    })
+}
+
+fn count_stored_files(directory: &Path) -> Result<usize, String> {
+    if !directory.is_dir() {
+        return Ok(0);
+    }
+
+    let entries = fs::read_dir(directory)
+        .map_err(|error| format!("Failed to read stored data: {error}"))?;
+    let mut count = 0;
+
+    for entry in entries {
+        let entry = entry.map_err(|error| format!("Failed to read stored data: {error}"))?;
+        let path = entry.path();
+
+        if path.is_dir() {
+            count += count_stored_files(&path)?;
+        } else {
+            count += 1;
+        }
+    }
+
+    Ok(count)
 }
 
 fn model_storage_dir(app: &tauri::AppHandle, model: DownloadModel) -> Result<PathBuf, String> {
@@ -767,7 +835,8 @@ pub fn run() {
             write_output_file,
             write_output_file_path,
             write_binary_file_path,
-            write_pii_filter_result
+            write_pii_filter_result,
+            delete_local_pii_data
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
