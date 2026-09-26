@@ -35,16 +35,48 @@ export async function createRedactedPdfBytes({
   scale = 2,
   removeText = false,
   addBlackBox = true,
+  mode = "raster",
 }: RedactedPdfExportOptions) {
-  const loadingTask = pdfjs.getDocument({
-    data: base64ToUint8Array(document.dataBase64),
-  });
+  const sourceBytes = base64ToUint8Array(document.dataBase64);
+  const loadingTask = pdfjs.getDocument({ data: sourceBytes });
   const sourcePdf = await loadingTask.promise;
   const outputPdf = await PDFDocument.create();
   const redactionRects = selectedPdfRects({ document, matches, selection });
+  // Copying a page through keeps its text layer, and pdf-lib needs its own
+  // handle on the source to copy from. A source pdf-lib refuses to load (an
+  // encrypted file, for example) is rasterized page by page instead.
+  const copyableSource = await loadCopyableSource(sourceBytes);
 
   try {
-    for (let pageIndex = 0; pageIndex < sourcePdf.numPages; pageIndex += 1) {
+    const pagePlan = planPdfPages({
+      pageCount: sourcePdf.numPages,
+      redactedPageIndexes: redactionRects.map(({ rect }) => rect.pageIndex),
+      mode,
+    });
+
+    for (const { pageIndex, strategy } of pagePlan) {
+      if (strategy !== "raster" && copyableSource) {
+        const [copiedPage] = await outputPdf.copyPages(copyableSource, [
+          pageIndex,
+        ]);
+        outputPdf.addPage(copiedPage);
+
+        if (strategy === "cover") {
+          const sourcePage = await sourcePdf.getPage(pageIndex + 1);
+
+          drawCoverBoxes({
+            page: copiedPage,
+            viewport: sourcePage.getViewport({ scale: 1 }),
+            rects: redactionRects
+              .filter(({ rect }) => rect.pageIndex === pageIndex)
+              .map(({ rect }) => rect),
+            black: addBlackBox,
+          });
+        }
+
+        continue;
+      }
+
       const page = await sourcePdf.getPage(pageIndex + 1);
       const baseViewport = page.getViewport({ scale: 1 });
       const renderViewport = page.getViewport({ scale });
@@ -83,7 +115,9 @@ export async function createRedactedPdfBytes({
           });
       }
 
-      const pageImage = await outputPdf.embedPng(await canvasToPngBytes(canvas));
+      const pageImage = await outputPdf.embedPng(
+        await canvasToPngBytes(canvas),
+      );
       const outputPage = outputPdf.addPage([
         baseViewport.width,
         baseViewport.height,
