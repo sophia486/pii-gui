@@ -1930,70 +1930,31 @@ function ColumnResizeHandle({
 }
 
 function filterPii(input: string) {
-  const matches: PiiMatch[] = [
-    ...Array.from(input.matchAll(emailPattern()), (match, index) => {
+  const rules = builtInRegexRules();
+  const matches: PiiMatch[] = [];
+
+  for (const rule of rules) {
+    for (const [index, match] of Array.from(
+      input.matchAll(rule.regex),
+    ).entries()) {
       const start = match.index ?? index;
 
-      return {
-        id: `private-email-${start}-${index}`,
-        kind: "private_email" as const,
+      matches.push({
+        id: `${rule.matchIdPrefix}-${start}-${index}`,
+        kind: rule.kind,
         value: match[0],
         start,
         end: start + match[0].length,
-      };
-    }),
-    ...Array.from(input.matchAll(phonePattern()), (match, index) => {
-      const start = match.index ?? index;
+      });
+    }
+  }
 
-      return {
-        id: `private-phone-${start}-${index}`,
-        kind: "private_phone" as const,
-        value: match[0],
-        start,
-        end: start + match[0].length,
-      };
-    }),
-    ...Array.from(input.matchAll(urlPattern()), (match, index) => {
-      const start = match.index ?? index;
+  matches.sort((a, b) => a.start - b.start);
 
-      return {
-        id: `private-url-${start}-${index}`,
-        kind: "private_url" as const,
-        value: match[0],
-        start,
-        end: start + match[0].length,
-      };
-    }),
-    ...Array.from(input.matchAll(datePattern()), (match, index) => {
-      const start = match.index ?? index;
-
-      return {
-        id: `private-date-${start}-${index}`,
-        kind: "private_date" as const,
-        value: match[0],
-        start,
-        end: start + match[0].length,
-      };
-    }),
-    ...Array.from(input.matchAll(secretPattern()), (match, index) => {
-      const start = match.index ?? index;
-
-      return {
-        id: `secret-${start}-${index}`,
-        kind: "secret" as const,
-        value: match[0],
-        start,
-        end: start + match[0].length,
-      };
-    }),
-  ].sort((a, b) => a.start - b.start);
-
-  const redactedText = input
-    .replace(emailPattern(), "[PRIVATE_EMAIL]")
-    .replace(phonePattern(), "[PRIVATE_PHONE]")
-    .replace(urlPattern(), "[PRIVATE_URL]")
-    .replace(datePattern(), "[PRIVATE_DATE]")
-    .replace(secretPattern(), "[SECRET]");
+  const redactedText = rules.reduce(
+    (text, rule) => text.replace(rule.regex, rule.replacement),
+    input,
+  );
 
   return { backend: "regex" as const, matches, redactedText };
 }
