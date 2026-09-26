@@ -34,8 +34,8 @@ PII GUI supports two local workflows.
 - **PDF, Markdown, and plain-text input** — PDFs are parsed with pdf.js, preserving per-character positions so detections are highlighted directly on the rendered page.
 - **Custom rules** — add your own regex or exact-match filters on top of any backend.
 - **Review before redacting** — toggle individual matches on or off in the workbench before export.
-- **True PDF redaction** — exported PDFs burn opaque rectangles into the rendered pages with pdf-lib, so redacted text is not recoverable from the output file.
-- **Task history and persistence** — tabs, custom rules, and filter results survive restarts via a local SQLite database and on-disk result files.
+- **True PDF redaction** — each page that carries an approved redaction is re-rendered and burned into the export as an image with pdf-lib, so the redacted text is not recoverable from the output file. Pages without redactions are copied through with their text layer intact, which keeps them searchable and the export small.
+- **Task history and persistence** — tabs, custom rules, and filter results survive restarts via a local SQLite database and on-disk result files. Settings shows what is stored locally and can delete it.
 - **Long-document support** — input is split into token-bounded, page-aware chunks and processed through a task queue.
 - **Localized UI** — English, Korean, and Japanese.
 
@@ -106,7 +106,7 @@ Document (PDF / md / txt)
   → export (burned-in PDF redaction or redacted text)
 ```
 
-The frontend (React) handles document parsing, chunking, review, and export. The Rust backend (`src-tauri/`) owns the detection engines, model lifecycle (download / verify / delete), and file I/O — all writes are confined to the Tauri app data directory.
+The frontend (React) handles document parsing, chunking, review, and export. The Rust backend (`src-tauri/`) owns the detection engines, model lifecycle (download / verify / delete), and file I/O. Everything the app stores for itself — the SQLite database, the PDF redaction result files, and the downloaded models — stays inside the Tauri app data directory, and an export writes only to the path you pick in the native save dialog.
 
 ## Development
 
