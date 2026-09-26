@@ -93,6 +93,13 @@ export const uiCopy = {
       custom: "Custom",
       builtIn: "Built-in",
       user: "User",
+      localData: "Local data",
+      localDataDescription:
+        "Documents, PDFs and PII filter results are saved as plain text in this app's data folder. Delete them here once you no longer need them.",
+      clearLocalData: "Delete local data",
+      clearLocalDataRequiresApp:
+        "Local data deletion is available in the desktop app.",
+      localDataCleared: "Deleted the stored documents and PII filter results",
     },
     onboarding: {
       title: "Onboarding",
@@ -364,6 +371,13 @@ export const uiCopy = {
       custom: "사용자 지정",
       builtIn: "기본 제공",
       user: "사용자",
+      localData: "로컬 데이터",
+      localDataDescription:
+        "문서 원문과 PDF, PII 필터 결과가 이 앱의 데이터 폴더에 평문으로 저장됩니다. 더 이상 필요하지 않으면 여기에서 삭제하세요.",
+      clearLocalData: "로컬 데이터 삭제",
+      clearLocalDataRequiresApp:
+        "로컬 데이터 삭제는 데스크톱 앱에서 사용할 수 있습니다.",
+      localDataCleared: "저장된 문서와 PII 필터 결과를 삭제했습니다",
     },
     onboarding: {
       title: "온보딩",
@@ -634,6 +648,13 @@ export const uiCopy = {
       custom: "カスタム",
       builtIn: "組み込み",
       user: "ユーザー",
+      localData: "ローカルデータ",
+      localDataDescription:
+        "文書の原文と PDF、PII フィルター結果はこのアプリのデータフォルダーに平文で保存されます。不要になったらここで削除してください。",
+      clearLocalData: "ローカルデータを削除",
+      clearLocalDataRequiresApp:
+        "ローカルデータの削除はデスクトップアプリで利用できます。",
+      localDataCleared: "保存された文書と PII フィルター結果を削除しました",
     },
     onboarding: {
       title: "オンボーディング",
