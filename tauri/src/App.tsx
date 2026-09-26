@@ -2333,6 +2333,27 @@ function App() {
     }
   }
 
+  async function clearLocalData() {
+    if (!window.__TAURI_INTERNALS__) {
+      setNotice(copy.settings.clearLocalDataRequiresApp);
+      return;
+    }
+
+    try {
+      await clearLocalPiiData();
+      const tab = initialTab(createEntityId("tab"));
+
+      nextTabNumber.current = 2;
+      setTabs([tab]);
+      setActiveTabId(tab.id);
+      setClosedTabs([]);
+      setPiiTasks([]);
+      setNotice(copy.settings.localDataCleared);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   function updateActiveTab(update: Partial<WorkTab>) {
     setTabs((currentTabs) =>
       currentTabs.map((tab) =>
@@ -3829,6 +3850,13 @@ function App() {
             void appUpdater.checkForUpdates();
           }}
           onDeleteModel={deletePiiModel}
+          onClearLocalData={
+            isAppPersistenceAvailable()
+              ? () => {
+                  void clearLocalData();
+                }
+              : undefined
+          }
           onDownloadModel={downloadPiiModel}
           onInstallAppUpdate={() => {
             void appUpdater.downloadAndInstall();
