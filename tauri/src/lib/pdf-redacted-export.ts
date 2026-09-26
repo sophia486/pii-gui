@@ -162,3 +162,38 @@ async function canvasToPngBytes(canvas: HTMLCanvasElement) {
   const dataUrl = canvas.toDataURL("image/png");
   return base64ToUint8Array(dataUrl.split(",", 2)[1] ?? "");
 }
+
+function drawCoverBoxes({
+  page,
+  viewport,
+  rects,
+  black,
+}: {
+  page: PDFPage;
+  viewport: { width: number; height: number };
+  rects: PdfRect[];
+  black: boolean;
+}) {
+  const { width, height } = page.getSize();
+  const scaleX = viewport.width > 0 ? width / viewport.width : 1;
+  const scaleY = viewport.height > 0 ? height / viewport.height : 1;
+  const color = black ? rgb(0, 0, 0) : rgb(1, 1, 1);
+
+  for (const rect of rects) {
+    page.drawRectangle({
+      x: rect.x * scaleX,
+      y: height - (rect.y + rect.height) * scaleY,
+      width: Math.max(2, rect.width * scaleX),
+      height: Math.max(8, rect.height * scaleY),
+      color,
+    });
+  }
+}
+
+async function loadCopyableSource(sourceBytes: Uint8Array) {
+  try {
+    return await PDFDocument.load(sourceBytes);
+  } catch {
+    return null;
+  }
+}
