@@ -1,10 +1,12 @@
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, rgb, type PDFPage } from "pdf-lib";
 
 import {
   base64ToUint8Array,
   selectedPdfRects,
   type PdfDocumentData,
+  type PdfRect,
 } from "@/lib/pdf-document";
+import { planPdfPages, type PdfExportMode } from "@/lib/pdf-export-plan";
 import { pdfjs } from "@/lib/pdfjs";
 import type { PiiMatch, PiiMatchSelection } from "@/lib/redaction-policy";
 
@@ -17,6 +19,13 @@ type RedactedPdfExportOptions = {
   removeText?: boolean;
   /** Draw a solid black box over the matched text. */
   addBlackBox?: boolean;
+  /**
+   * `raster` (default) re-renders a redacted page as an image, so the covered
+   * text leaves the file, and copies every other page through unchanged.
+   * `searchable` copies the page and paints boxes over the matches, which
+   * keeps the text layer and leaves the covered text in the file.
+   */
+  mode?: PdfExportMode;
 };
 
 export async function createRedactedPdfBytes({
