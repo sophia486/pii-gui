@@ -85,7 +85,9 @@ import {
   type AppMetadata,
 } from "@/lib/app-metadata";
 import {
+  clearLocalPiiData,
   initAppPersistence,
+  isAppPersistenceAvailable,
   persistCustomRules,
   persistPiiTaskResult,
   persistTabs,
@@ -103,6 +105,7 @@ import {
   type PiiTaskRecord,
   startNextQueuedTask,
 } from "@/lib/pii-task-queue";
+import { builtInRegexRules } from "@/lib/pii-rules";
 import {
   applyCustomRules,
   createMatchSelection,
@@ -373,26 +376,6 @@ declare global {
   interface Window {
     __TAURI_INTERNALS__?: unknown;
   }
-}
-
-function emailPattern() {
-  return /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
-}
-
-function phonePattern() {
-  return /(?:\+?1[\s.-]?)?(?:\(\d{3}\)|\d{3})[\s.-]?\d{3}[\s.-]?\d{4}/g;
-}
-
-function urlPattern() {
-  return /\b(?:https?:\/\/|www\.)[A-Z0-9._~:/?#[\]@!$&'()*+,;=%-]*[A-Z0-9/#]/gi;
-}
-
-function datePattern() {
-  return /\b(?:\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{2,4}|(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2},?\s+\d{4})\b/gi;
-}
-
-function secretPattern() {
-  return /\bsk_[A-Za-z0-9_]{12,}\b/g;
 }
 
 function createEntityId(prefix: string) {
@@ -834,6 +817,7 @@ function SettingsPage({
   onAddRule,
   onBack,
   onCheckAppUpdate,
+  onClearLocalData,
   onDeleteModel,
   onDownloadModel,
   onInstallAppUpdate,
@@ -865,6 +849,7 @@ function SettingsPage({
   onAddRule: () => void;
   onBack: () => void;
   onCheckAppUpdate: () => void;
+  onClearLocalData?: () => void;
   onDeleteModel: (modelId: Exclude<PiiModelId, "regex">) => void;
   onDownloadModel: (modelId: Exclude<PiiModelId, "regex">) => void;
   onInstallAppUpdate: () => void;
@@ -1038,6 +1023,37 @@ function SettingsPage({
               })}
             </div>
           </div>
+        </section>
+
+        <section className="space-y-3 rounded-md border bg-card p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-medium">{copy.settings.localData}</h3>
+              <p className="text-xs text-muted-foreground">
+                {copy.settings.localDataDescription}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!onClearLocalData}
+              title={
+                onClearLocalData
+                  ? copy.settings.clearLocalData
+                  : copy.settings.clearLocalDataRequiresApp
+              }
+              onClick={() => onClearLocalData?.()}
+            >
+              <Trash2 aria-hidden="true" />
+              {copy.settings.clearLocalData}
+            </Button>
+          </div>
+          {onClearLocalData ? null : (
+            <p className="text-xs text-muted-foreground">
+              {copy.settings.clearLocalDataRequiresApp}
+            </p>
+          )}
         </section>
 
         <section className="space-y-3 rounded-md border bg-card p-4">
