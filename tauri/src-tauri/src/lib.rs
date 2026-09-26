@@ -619,6 +619,84 @@ impl ContentHasher {
             Self::Sha256(hasher) => {
                 hasher.update(bytes);
             }
+            Self::GitBlobSha1 { hasher, .. } => {
+                hasher.update(bytes);
+            }
+            Self::None => {}
+        }
+    }
+
+    fn finish(self) -> Option<String> {
+        match self {
+            Self::Sha256(hasher) => Some(hex_digest(hasher.finalize().as_slice())),
+            Self::GitBlobSha1 { mut hasher, header } => {
+                hasher.update(&header);
+                Some(hex_digest(hasher.finalize().as_slice()))
+            }
+            Self::None => None,
+        }
+    }
+}
+
+/// Streams a stored file through the digest the server publishes for it, so a
+/// file that was truncated, corrupted or swapped after download is fetched
+/// again instead of being loaded into the model.
+fn stored_model_file_is_valid(client: &Client, model_file: &ModelFile, target_path: &Path) -> bool {
+    let response = match client.head(model_file.url).send() {
+        Ok(response) => response,
+        Err(error) => {
+            log::warn!(
+                "could not verify stored model file {}: {error}",
+                model_file.relative_path
+            );
+            return true;
+        }
+    };
+    let expected_hash = response_content_hash(&response);
+    let expected_size = response_content_size(&response);
+    let stored_size = fs::metadata(target_path)
+        .map(|metadata| metadata.len())
+        .unwrap_or(0);
+
+    if let Some(expected_size) = expected_size {
+        if stored_size != expected_size {
+            return false;
+        }
+    }
+
+    let Some(expected_hash) = expected_hash else {
+        return true;
+    };
+    let mut hasher = ContentHasher::for_digest(Some(&expected_hash), expected_size);
+    let mut reader = match fs::File::open(target_path) {
+        Ok(file) => BufReader::new(file),
+        Err(error) => {
+            log::warn!(
+                "could not read stored model file {}: {error}",
+                model_file.relative_path
+            );
+            return false;
+        }
+    };
+    let mut buffer = [0_u8; 64 * 1024];
+
+    loop {
+        match reader.read(&mut buffer) {
+            Ok(0) => break,
+            Ok(read) => hasher.update(&buffer[..read]),
+            Err(error) => {
+                log::warn!(
+                    "could not read stored model file {}: {error}",
+                    model_file.relative_path
+                );
+                return false;
+            }
+        }
+    }
+
+    hasher.finish().as_deref() == Some(expected_hash.as_str())
+}
+
 #[derive(Serialize)]
 struct StoredDataDeletion {
     removed_files: usize,
