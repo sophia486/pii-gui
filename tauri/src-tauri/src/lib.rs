@@ -379,9 +379,12 @@ fn download_model_blocking(
             .map_err(|error| format!("Failed to download {}: {error}", model_file.relative_path))?
             .error_for_status()
             .map_err(|error| format!("Failed to download {}: {error}", model_file.relative_path))?;
+        let expected_hash = response_content_hash(&response);
+        let expected_size = response_content_size(&response);
         let temporary_path = target_path.with_extension("download");
         let mut file = fs::File::create(&temporary_path)
             .map_err(|error| format!("Failed to create model download file: {error}"))?;
+        let mut hasher = ContentHasher::for_digest(expected_hash.as_deref(), expected_size);
         let mut buffer = [0_u8; 64 * 1024];
         let mut written = 0;
         loop {
@@ -393,6 +396,7 @@ fn download_model_blocking(
             }
             file.write_all(&buffer[..read])
                 .map_err(|error| format!("Failed to write model file: {error}"))?;
+            hasher.update(&buffer[..read]);
             written += read as u64;
             emit_model_download_progress(
                 app,
@@ -405,6 +409,34 @@ fn download_model_blocking(
                 expected_bytes,
             );
         }
+        if let Some(expected_size) = expected_size {
+            if written != expected_size {
+                let _ = fs::remove_file(&temporary_path);
+
+                return Err(format!(
+                    "Downloaded {} is {written} bytes but {expected_size} bytes were expected.",
+                    model_file.relative_path
+                ));
+            }
+        }
+
+        if let (Some(expected_hash), Some(actual_hash)) = (expected_hash, hasher.finish()) {
+            if expected_hash != actual_hash {
+                let _ = fs::remove_file(&temporary_path);
+
+                return Err(format!(
+                    "Checksum mismatch for {}. The downloaded file does not match the hash published by {}",
+                    model_file.relative_path, model_file.url
+                ));
+            }
+
+            log::info!(
+                "model file verified: model={} file={} bytes={written}",
+                model.id(),
+                model_file.relative_path,
+            );
+        }
+
         fs::rename(&temporary_path, &target_path)
             .map_err(|error| format!("Failed to finalize model file: {error}"))?;
         files_downloaded += 1;
