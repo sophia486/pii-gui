@@ -79,8 +79,7 @@ struct RegexRedactor {
 impl RegexRedactor {
     fn new() -> Self {
         Self {
-            email: Regex::new(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b")
-                .expect("email regex must compile"),
+            email: shared_regex("private_email"),
             phone: Regex::new(r"(?:\+?1[\s.-]?)?(?:\(\d{3}\)|\d{3})[\s.-]?\d{3}[\s.-]?\d{4}")
                 .expect("phone regex must compile"),
             url: Regex::new(r#"(?i)\b(?:https?://|www\.)[A-Z0-9._~:/?#\[\]@!$&'()*+,;=%-]*[A-Z0-9/#]"#)
