@@ -394,6 +394,50 @@ fn privacy_filter_onnx_path(model_dir: &Path) -> Result<PathBuf, String> {
     })
 }
 
+/// The built-in detection rules, shared with the TypeScript frontend.
+const PII_RULES_JSON: &str = include_str!("../../shared/pii-rules.json");
+
+fn pii_rules() -> &'static serde_json::Value {
+    static RULES: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+
+    RULES.get_or_init(|| {
+        serde_json::from_str(PII_RULES_JSON)
+            .expect("the shared pii rules must be valid JSON")
+    })
+}
+
+fn shared_regex_rule(kind: &str) -> &'static serde_json::Value {
+    pii_rules()
+        .get("regexRules")
+        .and_then(|rules| rules.as_array())
+        .and_then(|rules| {
+            rules.iter().find(|rule| {
+                rule.get("kind").and_then(|value| value.as_str()) == Some(kind)
+            })
+        })
+        .unwrap_or_else(|| panic!("the shared pii rules must define a {kind} rule"))
+}
+
+/// Compiles one shared rule into a regex, applying the rule's case flag.
+fn shared_regex(kind: &str) -> Regex {
+    let rule = shared_regex_rule(kind);
+    let pattern = rule
+        .get("pattern")
+        .and_then(|value| value.as_str())
+        .unwrap_or_else(|| panic!("the shared {kind} rule must define a pattern"));
+    let ignore_case = rule
+        .get("ignoreCase")
+        .and_then(|value| value.as_bool())
+        .unwrap_or(false);
+    let source = if ignore_case {
+        format!("(?i){pattern}")
+    } else {
+        pattern.to_string()
+    };
+
+    Regex::new(&source).unwrap_or_else(|error| panic!("the {kind} regex must compile: {error}"))
+}
+
 const PRIVACY_FILTER_LABELS: [&str; 33] = [
     "O",
     "B-account_number",
@@ -1373,8 +1417,34 @@ mod tests {
         assert_eq!(decoded, vec![0, 1]);
     }
 
+    /// The label list is derived from the shared taxonomy, so a kind added on
+    /// one side alone fails here instead of silently changing the decoding.
+    #[test]
+    fn privacy_filter_labels_follow_the_shared_taxonomy() {
+        let taxonomy: Vec<String> = pii_rules()
+            .get("taxonomy")
+            .and_then(|taxonomy| taxonomy.as_array())
+            .map(|kinds| {
+                kinds
+                    .iter()
+                    .filter_map(|kind| kind.as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let mut expected: Vec<String> = vec!["O".to_string()];
+
+        for kind in taxonomy {
+            for boundary in ["B", "I", "E", "S"] {
+                expected.push(format!("{boundary}-{kind}"));
+            }
+        }
+
+        assert_eq!(expected, PRIVACY_FILTER_LABELS.map(str::to_string));
+    }
+
     fn high_logit(label_id: usize) -> Vec<f32> {
         let mut logits = vec![-10.0; PRIVACY_FILTER_LABELS.len()];
+
         logits[label_id] = 10.0;
         logits
     }
