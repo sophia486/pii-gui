@@ -130,6 +130,8 @@ pnpm tauri build
 ```sh
 cd tauri
 pnpm test:unit              # frontend unit tests (vitest)
+pnpm test:unit:coverage     # unit tests with a coverage report
+pnpm lint                   # eslint
 pnpm build                  # typecheck + frontend build
 
 cd src-tauri
@@ -165,7 +167,6 @@ tauri/                      # the desktop app
     src/lib.rs              # Tauri commands: redact_text, model lifecycle, file I/O
     src/redact_engine.rs    # regex / ONNX / BardsAI detection backends
 docs/assets/                # README thumbnail and screenshot assets
-.github/workflows/release.yml  # cross-platform release builds
 ```
 
 ## Contributing
