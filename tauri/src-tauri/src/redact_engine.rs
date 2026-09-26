@@ -80,22 +80,10 @@ impl RegexRedactor {
     fn new() -> Self {
         Self {
             email: shared_regex("private_email"),
-            phone: Regex::new(r"(?:\+?1[\s.-]?)?(?:\(\d{3}\)|\d{3})[\s.-]?\d{3}[\s.-]?\d{4}")
-                .expect("phone regex must compile"),
-            url: Regex::new(r#"(?i)\b(?:https?://|www\.)[A-Z0-9._~:/?#\[\]@!$&'()*+,;=%-]*[A-Z0-9/#]"#)
-                .expect("url regex must compile"),
-            date: Regex::new(
-                r"(?ix)\b(?:
-                    \d{4}-\d{2}-\d{2}
-                    |
-                    \d{1,2}/\d{1,2}/\d{2,4}
-                    |
-                    (?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2},?\s+\d{4}
-                )\b",
-            )
-            .expect("date regex must compile"),
-            secret: Regex::new(r"\bsk_[A-Za-z0-9_]{12,}\b")
-                .expect("secret regex must compile"),
+            phone: shared_regex("private_phone"),
+            url: shared_regex("private_url"),
+            date: shared_regex("private_date"),
+            secret: shared_regex("secret"),
         }
     }
 
