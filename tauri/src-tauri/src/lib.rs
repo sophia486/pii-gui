@@ -541,6 +541,84 @@ fn write_pii_filter_result(
     write_pii_filter_result_file(&app_data_dir, tab_id, file_name, contents)
 }
 
+/// The content digest published for a model file, normalised to lowercase hex
+/// without quotes. Hugging Face publishes the content SHA-256 for files it
+/// stores with Xet or LFS, and the git blob SHA-1 for small plain git files.
+fn response_content_hash(response: &reqwest::blocking::Response) -> Option<String> {
+    let linked = response
+        .headers()
+        .get("x-linked-etag")
+        .and_then(|value| value.to_str().ok())
+        .map(normalize_hash_value)
+        .filter(|value| value.len() == SHA256_HEX_LEN);
+
+    if linked.is_some() {
+        return linked;
+    }
+
+    response
+        .headers()
+        .get("etag")
+        .and_then(|value| value.to_str().ok())
+        .map(normalize_hash_value)
+        .filter(|value| value.len() == SHA1_HEX_LEN)
+}
+
+fn response_content_size(response: &reqwest::blocking::Response) -> Option<u64> {
+    response
+        .headers()
+        .get("x-linked-size")
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.parse::<u64>().ok())
+        .or_else(|| response.content_length())
+}
+
+const SHA1_HEX_LEN: usize = 40;
+const SHA256_HEX_LEN: usize = 64;
+
+fn normalize_hash_value(value: &str) -> String {
+    value
+        .trim()
+        .trim_start_matches("W/")
+        .trim_matches('"')
+        .to_ascii_lowercase()
+}
+
+fn hex_digest(bytes: &[u8]) -> String {
+    let mut digest = String::with_capacity(bytes.len() * 2);
+
+    for byte in bytes {
+        digest.push_str(&format!("{byte:02x}"));
+    }
+
+    digest
+}
+
+/// Hashes bytes the way the published digest is computed: a plain content
+/// SHA-256, or a git blob SHA-1 that folds in the file length.
+enum ContentHasher {
+    Sha256(Sha256),
+    GitBlobSha1 { hasher: Sha1, header: Vec<u8> },
+    None,
+}
+
+impl ContentHasher {
+    fn for_digest(digest: Option<&str>, size: Option<u64>) -> Self {
+        match (digest.map(str::len), size) {
+            (Some(SHA256_HEX_LEN), _) => Self::Sha256(Sha256::new()),
+            (Some(SHA1_HEX_LEN), Some(size)) => Self::GitBlobSha1 {
+                hasher: Sha1::new(),
+                header: format!("blob {size}\0").into_bytes(),
+            },
+            _ => Self::None,
+        }
+    }
+
+    fn update(&mut self, bytes: &[u8]) {
+        match self {
+            Self::Sha256(hasher) => {
+                hasher.update(bytes);
+            }
 #[derive(Serialize)]
 struct StoredDataDeletion {
     removed_files: usize,
