@@ -1001,9 +1001,10 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::{
-        clear_process_model_path, is_markdown_path, is_pdf_path, model_checkpoint_dir,
-        write_binary_file_path_inner, write_pii_filter_result_file, write_text_file,
-        write_text_file_path, DownloadModel,
+        clear_process_model_path, count_stored_files, hex_digest, is_markdown_path, is_pdf_path,
+        model_checkpoint_dir, normalize_hash_value, write_binary_file_path_inner,
+        write_pii_filter_result_file, write_text_file, write_text_file_path, ContentHasher,
+        DownloadModel, SHA1_HEX_LEN, SHA256_HEX_LEN,
     };
     use std::{
         fs,
@@ -1188,5 +1189,67 @@ mod tests {
         assert!(
             write_pii_filter_result_file(&app_data_dir, "tab-1", "../unsafe.json", "{}").is_err()
         );
+    }
+
+    #[test]
+    fn normalises_published_hash_values() {
+        assert_eq!(normalize_hash_value("W/\"AB\""), "ab");
+        assert_eq!(normalize_hash_value("\"6D4DDE78\""), "6d4dde78");
+        assert_eq!(hex_digest(&[0x00, 0x0f, 0xff]), "000fff");
+    }
+
+    #[test]
+    fn content_hasher_matches_content_sha256_and_git_blob_sha1() {
+        let sha256_hex = "a".repeat(SHA256_HEX_LEN);
+        let mut content_hasher = ContentHasher::for_digest(Some(&sha256_hex), Some(5));
+
+        content_hasher.update(b"hello");
+        assert_eq!(
+            content_hasher.finish(),
+            Some("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824".to_string())
+        );
+
+        let sha1_hex = "b".repeat(SHA1_HEX_LEN);
+        let mut blob_hasher = ContentHasher::for_digest(Some(&sha1_hex), Some(5));
+
+        blob_hasher.update(b"hello");
+        assert_eq!(
+            blob_hasher.finish(),
+            Some("b6fc4c620b67d95f953a5c1c1230aaab5db5a1b0".to_string())
+        );
+
+        let mut unknown_hasher = ContentHasher::for_digest(None, Some(5));
+
+        unknown_hasher.update(b"hello");
+        assert_eq!(unknown_hasher.finish(), None);
+    }
+
+    #[test]
+    fn counts_stored_files_recursively() {
+        let directory = std::env::temp_dir().join(format!(
+            "pii-gui-stored-data-test-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("system time should be after unix epoch")
+                .as_nanos()
+        ));
+        let nested = directory.join("tab-1").join("results");
+
+        fs::create_dir_all(&nested).expect("test directory should be created");
+        fs::write(nested.join("one.json"), b"{}").expect("test file should be written");
+        fs::write(directory.join("tab-1").join("two.json"), b"{}")
+            .expect("test file should be written");
+
+        assert_eq!(
+            count_stored_files(&directory).expect("count should succeed"),
+            2
+        );
+        assert_eq!(
+            count_stored_files(&directory.join("tab-1").join("missing"))
+                .expect("missing directory should count as zero"),
+            0
+        );
+
+        let _ = fs::remove_dir_all(directory);
     }
 }
