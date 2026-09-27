@@ -90,8 +90,6 @@ Scope-risk: <narrow|moderate|broad>
 Directive: <forward-looking warning for future modifiers>
 Tested: <what was verified>
 Not-tested: <known gaps in verification>
-Co-authored-by: OmX <omx@oh-my-codex.dev>
 ```
 
-Use trailers only when they add useful decision context. The `Co-authored-by`
-trailer is required by the local workflow.
+Use trailers only when they add useful decision context.
