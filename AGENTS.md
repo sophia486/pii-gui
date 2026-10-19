@@ -44,7 +44,7 @@ User loads a PDF/markdown/text → (PDF) `src/lib/pdf-document.ts` extracts text
 
 - `src/App.tsx` is the orchestrator: tab management, hand-rolled hash routing (no React Router) for `/` (workbench), `/settings`, `/onboarding` — keep these routes separate.
 - `src/lib/redaction-policy.ts` — match merging/selection/restoration logic.
-- `src/lib/i18n.ts` — all UI copy (en, ko, ja); language settings drive visible copy.
+- `src/lib/i18n.ts` — all UI copy (en, ko, ja, ru); language settings drive visible copy. `en` defines the canonical shape (`UiCopy`); key structure, non-empty strings and placeholder parity across languages are enforced by `src/lib/i18n.test.ts`, and App.tsx accesses every visible key through the language union so used keys are compile-checked per language.
 - Reusable UI primitives go in `src/components/ui/` following the existing shadcn/Radix wrapper style; use Tailwind utilities, design tokens from `App.css`, and lucide icons.
 - Preserve keyboard shortcut behavior (`src/lib/app-shortcuts.ts`) and tooltip labels when changing buttons.
 - For visual changes, run the app and inspect the UI when practical.

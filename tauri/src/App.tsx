@@ -542,6 +542,7 @@ function initialAppLanguage(): AppLanguage {
   const browserLanguage = navigator.language.toLowerCase();
   if (browserLanguage.startsWith("ko")) return "ko";
   if (browserLanguage.startsWith("ja")) return "ja";
+  if (browserLanguage.startsWith("ru")) return "ru";
 
   return "en";
 }
@@ -584,7 +585,8 @@ function initialPiiModel(): PiiModelId {
 }
 
 function isAppLanguage(language: unknown): language is AppLanguage {
-  return language === "en" || language === "ko" || language === "ja";
+  return language === "en" || language === "ko" || language === "ja" ||
+    language === "ru";
 }
 
 function isPiiModelId(value: unknown): value is PiiModelId {
@@ -970,6 +972,7 @@ function SettingsPage({
                   <SelectItem value="en">{copy.settings.english}</SelectItem>
                   <SelectItem value="ko">{copy.settings.korean}</SelectItem>
                   <SelectItem value="ja">{copy.settings.japanese}</SelectItem>
+                  <SelectItem value="ru">{copy.settings.russian}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1506,6 +1509,7 @@ function OnboardingPage({
                         { id: "en", label: copy.onboarding.english },
                         { id: "ko", label: copy.onboarding.korean },
                         { id: "ja", label: copy.onboarding.japanese },
+                        { id: "ru", label: copy.onboarding.russian },
                       ] as const
                     ).map((option) => (
                       <Button

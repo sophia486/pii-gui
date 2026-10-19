@@ -37,7 +37,7 @@ PII GUI supports two local workflows.
 - **True PDF redaction** — each page that carries an approved redaction is re-rendered and burned into the export as an image with pdf-lib, so the redacted text is not recoverable from the output file. Pages without redactions are copied through with their text layer intact, which keeps them searchable and the export small.
 - **Task history and persistence** — tabs, custom rules, and filter results survive restarts via a local SQLite database and on-disk result files. Settings shows what is stored locally and can delete it.
 - **Long-document support** — input is split into token-bounded, page-aware chunks and processed through a task queue.
-- **Localized UI** — English, Korean, and Japanese.
+- **Localized UI** — English, Korean, Japanese, and Russian.
 
 ## Detection Backends
 
