@@ -38,7 +38,7 @@ export async function createRedactedPdfBytes({
   mode = "raster",
 }: RedactedPdfExportOptions) {
   const sourceBytes = base64ToUint8Array(document.dataBase64);
-  const loadingTask = pdfjs.getDocument({ data: sourceBytes });
+  const loadingTask = pdfjs.getDocument({ data: Uint8Array.from(sourceBytes) });
   const sourcePdf = await loadingTask.promise;
   const outputPdf = await PDFDocument.create();
   const redactionRects = selectedPdfRects({ document, matches, selection });

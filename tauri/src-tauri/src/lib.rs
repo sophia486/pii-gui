@@ -598,7 +598,7 @@ fn hex_digest(bytes: &[u8]) -> String {
 /// SHA-256, or a git blob SHA-1 that folds in the file length.
 enum ContentHasher {
     Sha256(Sha256),
-    GitBlobSha1 { hasher: Sha1, header: Vec<u8> },
+    GitBlobSha1 { hasher: Sha1 },
     None,
 }
 
@@ -606,10 +606,14 @@ impl ContentHasher {
     fn for_digest(digest: Option<&str>, size: Option<u64>) -> Self {
         match (digest.map(str::len), size) {
             (Some(SHA256_HEX_LEN), _) => Self::Sha256(Sha256::new()),
-            (Some(SHA1_HEX_LEN), Some(size)) => Self::GitBlobSha1 {
-                hasher: Sha1::new(),
-                header: format!("blob {size}\0").into_bytes(),
-            },
+            (Some(SHA1_HEX_LEN), Some(size)) => {
+                // A git blob is hashed over "blob <size>\0" followed by the
+                // content, so the header has to enter the digest first.
+                let mut hasher = Sha1::new();
+                hasher.update(format!("blob {size}\0").as_bytes());
+
+                Self::GitBlobSha1 { hasher }
+            }
             _ => Self::None,
         }
     }
@@ -619,7 +623,7 @@ impl ContentHasher {
             Self::Sha256(hasher) => {
                 hasher.update(bytes);
             }
-            Self::GitBlobSha1 { hasher, .. } => {
+            Self::GitBlobSha1 { hasher } => {
                 hasher.update(bytes);
             }
             Self::None => {}
@@ -629,10 +633,7 @@ impl ContentHasher {
     fn finish(self) -> Option<String> {
         match self {
             Self::Sha256(hasher) => Some(hex_digest(hasher.finalize().as_slice())),
-            Self::GitBlobSha1 { mut hasher, header } => {
-                hasher.update(&header);
-                Some(hex_digest(hasher.finalize().as_slice()))
-            }
+            Self::GitBlobSha1 { hasher } => Some(hex_digest(hasher.finalize().as_slice())),
             Self::None => None,
         }
     }

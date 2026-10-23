@@ -1,3 +1,4 @@
+import { verifyExportedPdf } from "@/lib/pdf-export-verification";
 import "./App.css";
 
 import { invoke } from "@tauri-apps/api/core";
@@ -106,7 +107,7 @@ import {
   startNextQueuedTask,
 } from "@/lib/pii-task-queue";
 import { normalizeRustMatchOffsets } from "@/lib/pii-match-offsets";
-import { builtInRegexRules } from "@/lib/pii-rules";
+import { filterPii } from "@/lib/pii-rules";
 import {
   applyCustomRules,
   createMatchSelection,
@@ -1930,35 +1931,6 @@ function ColumnResizeHandle({
   );
 }
 
-function filterPii(input: string) {
-  const rules = builtInRegexRules();
-  const matches: PiiMatch[] = [];
-
-  for (const rule of rules) {
-    for (const [index, match] of Array.from(
-      input.matchAll(rule.regex),
-    ).entries()) {
-      const start = match.index ?? index;
-
-      matches.push({
-        id: `${rule.matchIdPrefix}-${start}-${index}`,
-        kind: rule.kind,
-        value: match[0],
-        start,
-        end: start + match[0].length,
-      });
-    }
-  }
-
-  matches.sort((a, b) => a.start - b.start);
-
-  const redactedText = rules.reduce(
-    (text, rule) => text.replace(rule.regex, rule.replacement),
-    input,
-  );
-
-  return { backend: "regex" as const, matches, redactedText };
-}
 
 async function redactText(
   input: string,
@@ -3139,8 +3111,12 @@ function App() {
           ...redactionOptions,
         });
 
+        const verification = await verifyExportedPdf(bytes, {
+          selectedMatches: tab.matches.filter(match => tab.matchSelection[match.id] !== false), customRules,
+        });
         downloadBytesInBrowser(defaultFileName, bytes, "application/pdf");
-        setNotice(`${copy.notices.downloaded} ${defaultFileName}.`);
+        downloadBytesInBrowser(`${defaultFileName}.verification.json`, new TextEncoder().encode(JSON.stringify(verification, null, 2)), "application/json");
+        setNotice(`${copy.notices.downloaded} ${defaultFileName}. ${copy.notices.pdfVerificationLimited} ${verification.residualMatchCount}`);
         return;
       }
 
@@ -3164,11 +3140,16 @@ function App() {
         ...redactionOptions,
       });
 
-      await invoke("write_binary_file_path", {
-        targetPath,
-        dataBase64: bytesToBase64(bytes),
+      const verification = await verifyExportedPdf(bytes, {
+        selectedMatches: tab.matches.filter(match => tab.matchSelection[match.id] !== false), customRules,
       });
-      setNotice(`${copy.notices.saved} ${fileNameFromPath(targetPath)}.`);
+      await invoke("write_binary_file_path", { targetPath, dataBase64: bytesToBase64(bytes) });
+      try {
+        await invoke("write_output_file_path", { targetPath: `${targetPath}.verification.json`, text: JSON.stringify(verification, null, 2) });
+        setNotice(`${copy.notices.saved} ${fileNameFromPath(targetPath)}. ${copy.notices.pdfVerificationLimited} ${verification.residualMatchCount}`);
+      } catch (error) {
+        setNotice(`${copy.notices.saved} ${fileNameFromPath(targetPath)}. ${copy.notices.pdfVerificationSaveFailed} ${String(error)}`);
+      }
     } catch (error) {
       setNotice(error instanceof Error ? error.message : String(error));
     }

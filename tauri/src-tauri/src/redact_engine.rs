@@ -74,6 +74,11 @@ struct RegexRedactor {
     url: Regex,
     date: Regex,
     secret: Regex,
+    credit_card: Regex,
+    kr_registration: Regex,
+    jp_my_number: Regex,
+    jp_corporate: Regex,
+    jp_postal: Regex,
 }
 
 impl RegexRedactor {
@@ -84,12 +89,17 @@ impl RegexRedactor {
             url: shared_regex("private_url"),
             date: shared_regex("private_date"),
             secret: shared_regex("secret"),
+            credit_card: shared_regex_prefix("credit-card"),
+            kr_registration: shared_regex_prefix("kr-registration"),
+            jp_my_number: shared_regex_prefix("jp-my-number"),
+            jp_corporate: shared_regex_prefix("jp-corporate"),
+            jp_postal: shared_regex_prefix("jp-postal"),
         }
     }
 
     fn redact_sync(&self, input: &str) -> RedactResult {
         let mut matches = self.collect_matches(input);
-        matches.sort_by_key(|pii_match| pii_match.start);
+        matches.sort_by_key(|pii_match| (pii_match.start, std::cmp::Reverse(pii_match.end)));
 
         RedactResult {
             backend: "regex".to_string(),
@@ -151,8 +161,74 @@ impl RegexRedactor {
             });
         }
 
+        for (index, found) in self.credit_card.find_iter(input).enumerate() {
+            if !valid_card(found.as_str()) || !isolated_digits(input, found.start(), found.end()) { continue; }
+            matches.push(RedactMatch {
+                id: format!("credit-card-{}-{index}", found.start()),
+                kind: "account_number".into(), value: found.as_str().into(),
+                start: found.start(), end: found.end(),
+            });
+        }
+        for (index, found) in self.kr_registration.find_iter(input).enumerate() {
+            if korean_registration_validation(found.as_str()).is_none() { continue; }
+            matches.push(RedactMatch { id: format!("kr-registration-{}-{index}", found.start()),
+                kind: "account_number".into(), value: found.as_str().into(), start: found.start(), end: found.end() });
+        }
+        for (regex, prefix, kind) in [(&self.jp_my_number, "jp-my-number", "account_number"), (&self.jp_corporate, "jp-corporate", "account_number"), (&self.jp_postal, "jp-postal", "private_address")] {
+            for (index, found) in regex.find_iter(input).enumerate() {
+                if prefix != "jp-postal" && (Regex::new(r"[0-9][ -]$").unwrap().is_match(&input[..found.start()]) || Regex::new(r"^[ -][0-9]").unwrap().is_match(&input[found.end()..])) { continue; }
+                if prefix != "jp-postal" && !japanese_number_valid(found.as_str(), prefix == "jp-my-number") { continue; }
+                matches.push(RedactMatch { id: format!("{prefix}-{}-{index}", found.start()), kind: kind.into(),
+                    value: found.as_str().into(), start: found.start(), end: found.end() });
+            }
+        }
         matches
     }
+}
+
+/// Reject a candidate that sits inside a longer digit run, mirroring the
+/// browser-side check so both backends accept exactly the same cards.
+fn isolated_digits(input: &str, start: usize, end: usize) -> bool {
+    let before = input[..start].chars().next_back();
+    let after = input[end..].chars().next();
+    !before.is_some_and(|c| c.is_ascii_digit()) && !after.is_some_and(|c| c.is_ascii_digit())
+}
+
+fn japanese_number_valid(value: &str, individual: bool) -> bool {
+    let d: Vec<u32> = value.chars().filter_map(|c| c.to_digit(10)).collect();
+    if d.is_empty() || d.iter().all(|x| *x == d[0]) { return false; }
+    if individual {
+        if d.len() != 12 { return false; }
+        let sum: u32 = [6,5,4,3,2,7,6,5,4,3,2].iter().enumerate().map(|(i,w)| d[i]*w).sum();
+        let rem = sum % 11; return d[11] == if rem <= 1 { 0 } else { 11 - rem };
+    }
+    if d.len() != 13 || d[0] == 0 { return false; }
+    let sum: u32 = d[1..].iter().rev().enumerate().map(|(i,n)| n * if i % 2 == 0 { 1 } else { 2 }).sum();
+    d[0] == 9 - sum % 9
+}
+
+/// Some(true): legacy checksum; Some(false): structurally valid possible modern ID.
+/// Never discard modern randomized serials because a legacy checksum fails.
+fn korean_registration_validation(value: &str) -> Option<bool> {
+    let digits: Vec<u32> = value.chars().filter_map(|c| c.to_digit(10)).collect();
+    if digits.len() != 13 || !(1..=8).contains(&digits[6]) { return None; }
+    let gender = digits[6];
+    let year = if [1,2,5,6].contains(&gender) { 1900 } else { 2000 } + digits[0] * 10 + digits[1];
+    let month = digits[2] * 10 + digits[3]; let day = digits[4] * 10 + digits[5];
+    let days = match month { 1|3|5|7|8|10|12 => 31, 4|6|9|11 => 30,
+        2 => if year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) { 29 } else { 28 }, _ => return None };
+    if day == 0 || day > days { return None; }
+    let sum: u32 = [2,3,4,5,6,7,8,9,2,3,4,5].iter().enumerate().map(|(i,w)| digits[i] * w).sum();
+    Some(((if gender <= 4 { 11 } else { 13 }) - sum % 11) % 10 == digits[12])
+}
+
+fn valid_card(value: &str) -> bool {
+    let digits: Vec<u32> = value.chars().filter_map(|c| c.to_digit(10)).collect();
+    if !(13..=19).contains(&digits.len()) || digits.iter().all(|d| *d == digits[0]) { return false; }
+    digits.iter().rev().enumerate().map(|(i, d)| {
+        let n = if i % 2 == 1 { d * 2 } else { *d };
+        if n > 9 { n - 9 } else { n }
+    }).sum::<u32>() % 10 == 0
 }
 
 impl PiiRedactor for RegexRedactor {
@@ -409,6 +485,17 @@ fn shared_regex_rule(kind: &str) -> &'static serde_json::Value {
 /// Compiles one shared rule into a regex, applying the rule's case flag.
 fn shared_regex(kind: &str) -> Regex {
     let rule = shared_regex_rule(kind);
+    compile_shared_regex(rule)
+}
+
+fn shared_regex_prefix(prefix: &str) -> Regex {
+    let rule = pii_rules().get("regexRules").and_then(|rules| rules.as_array()).unwrap().iter()
+        .find(|rule| rule.get("matchIdPrefix").and_then(|value| value.as_str()) == Some(prefix)).unwrap();
+    compile_shared_regex(rule)
+}
+
+fn compile_shared_regex(rule: &serde_json::Value) -> Regex {
+    let kind = rule.get("kind").and_then(|value| value.as_str()).unwrap();
     let pattern = rule
         .get("pattern")
         .and_then(|value| value.as_str())
@@ -422,6 +509,7 @@ fn shared_regex(kind: &str) -> Regex {
     } else {
         pattern.to_string()
     };
+    let source = if rule.get("matchIdPrefix").and_then(|v| v.as_str()).is_some_and(|p| p == "kr-registration" || p.starts_with("jp-")) { source.replace(r"\b", r"(?-u:\b)") } else { source };
 
     Regex::new(&source).unwrap_or_else(|error| panic!("the {kind} regex must compile: {error}"))
 }
@@ -1180,6 +1268,46 @@ mod tests {
     }
 
     #[test]
+    fn regex_redacts_korean_and_japanese_phone_numbers() {
+        let engine = RedactEngine::new(RedactBackend::Regex);
+        let result = engine
+            .redact("KR mobile 010-1234-5678, KR landline 02-123-4567, KR intl +82 10-1234-5678, JP mobile 090-1234-5678, JP landline 03-1234-5678.")
+            .expect("regex redaction should succeed");
+
+        assert_eq!(
+            result.redacted_text,
+            "KR mobile [PRIVATE_PHONE], KR landline [PRIVATE_PHONE], KR intl [PRIVATE_PHONE], JP mobile [PRIVATE_PHONE], JP landline [PRIVATE_PHONE]."
+        );
+        assert_eq!(result.matches.len(), 5);
+        assert!(result.matches.iter().all(|m| m.kind == "private_phone"));
+        assert_eq!(result.matches[0].value, "010-1234-5678");
+        assert_eq!(result.matches[1].value, "02-123-4567");
+        assert_eq!(result.matches[2].value, "+82 10-1234-5678");
+        assert_eq!(result.matches[3].value, "090-1234-5678");
+        assert_eq!(result.matches[4].value, "03-1234-5678");
+    }
+
+    #[test]
+    fn regex_phone_rule_ignores_longer_digit_identifiers() {
+        let engine = RedactEngine::new(RedactBackend::Regex);
+        let result = engine
+            .redact("RRN 900101-1234560, JP id 123456789018, member 123456789012.")
+            .expect("regex redaction should succeed");
+
+        // The RRN and the My Number belong to their own account_number rules,
+        // so the phone rule must not claim any part of them, and the 12-digit
+        // serial that fails the My Number check digit must stay untouched.
+        assert_eq!(
+            result.redacted_text,
+            "RRN [ACCOUNT_NUMBER], JP id [ACCOUNT_NUMBER], member 123456789012."
+        );
+        assert_eq!(result.matches.len(), 2);
+        assert!(result.matches.iter().all(|m| m.kind == "account_number"));
+        assert_eq!(result.matches[0].value, "900101-1234560");
+        assert_eq!(result.matches[1].value, "123456789018");
+    }
+
+    #[test]
     fn regex_keeps_plain_text_unchanged() {
         let engine = RedactEngine::new(RedactBackend::Regex);
         let result = engine
@@ -1443,5 +1571,94 @@ mod tests {
             logits[label_id] = score;
         }
         logits
+    }
+}
+
+#[cfg(test)]
+mod card_validation_tests {
+    use super::*;
+    #[test]
+    fn card_checksum_accepts_only_valid_non_repeated_candidates() {
+        for value in ["4111111111111111", "4111 1111 1111 1111", "378282246310005", "4000000000000000006"] { assert!(valid_card(value)); }
+        for value in ["4111111111111112", "0000000000000000", "1111111111111", "411111111111", "41111111111111111111"] { assert!(!valid_card(value)); }
+    }
+    #[test]
+    fn regex_backend_rejects_card_inside_longer_digit_run() {
+        for input in ["94111111111111111", "94111 1111 1111 1111", "41111111111111112", "id 941111111111111111 end"] {
+            let result = RegexRedactor::new().redact_sync(input);
+            assert!(result.matches.iter().all(|m| m.kind != "account_number"), "{input}");
+        }
+    }
+
+    #[test]
+    fn regex_backend_reports_full_card_span() {
+        let input = "Card: 4111 1111 1111 1111.";
+        let result = RegexRedactor::new().redact_sync(input);
+        let card = result.matches.iter().find(|m| m.kind == "account_number").unwrap();
+        assert_eq!(card.value, "4111 1111 1111 1111");
+        assert_eq!(&input[card.start..card.end], card.value);
+    }
+}
+
+#[cfg(test)]
+mod kr_registration_tests {
+    use super::*;
+    #[test]
+    fn rejects_bad_dates_but_keeps_possible_randomized_serials() {
+        assert_eq!(korean_registration_validation("900101-1234560"), Some(false));
+        assert_eq!(korean_registration_validation("990229-1234567"), None);
+        assert_eq!(korean_registration_validation("000230-3123456"), None);
+        assert_eq!(korean_registration_validation("900101-9234567"), None);
+        assert_eq!(korean_registration_validation("900231-1234567"), None);
+        assert_eq!(korean_registration_validation("000229-1234568"), None);
+        assert_eq!(korean_registration_validation("000229-3234563"), Some(true));
+    }
+    #[test]
+    fn retains_full_registration_match() {
+        let result = RegexRedactor::new().redact_sync("ID: 9001011234560");
+        assert_eq!(result.redacted_text, "ID: [ACCOUNT_NUMBER]");
+    }
+}
+
+#[cfg(test)]
+mod jp_number_tests {
+    use super::*;
+    #[test]
+    fn check_digit_vectors() {
+        assert!(japanese_number_valid("123456789018", true));
+        assert!(!japanese_number_valid("123456789019", true));
+        assert!(japanese_number_valid("8700110005901", false));
+        assert!(!japanese_number_valid("1700110005901", false));
+    }
+    #[test]
+    fn japanese_text_adjacency() {
+        let result = RegexRedactor::new().redact_sync("番号123456789018です。〒123-4567");
+        assert!(result.matches.iter().any(|m| m.id.starts_with("jp-my-number")));
+        assert!(result.matches.iter().any(|m| m.kind == "private_address"));
+        // 1*6 + 2*5 + 3*4 + 4*3 + 5*2 + 6*7 + 7*6 + 8*5 + 9*4 + 0*3 + 1*2 = 212,
+        // 212 % 11 = 3, so the check digit is 11 - 3 = 8 -> 123456789018.
+        assert!(japanese_number_valid("123456789018", true));
+        let result = RegexRedactor::new().redact_sync("〒1234567");
+        assert!(result.matches.iter().any(|m| m.kind == "private_address"));
+    }
+}
+
+#[cfg(test)]
+mod expanded_secret_tests {
+    use super::*;
+    #[test]
+    fn matches_synthetic_credentials_and_whole_private_key() {
+        for value in [format!("AKIA{}", "A".repeat(16)), format!("ghp_{}", "C".repeat(36)),
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0In0.c3ludGhldGlj".into(),
+            "-----BEGIN RSA PRIVATE KEY-----\nU1lOVEhFVElD\n-----END RSA PRIVATE KEY-----".into()] {
+            let result = RegexRedactor::new().redact_sync(&value);
+            assert!(result.matches.iter().any(|m| m.kind == "secret" && m.value == value));
+        }
+    }
+    #[test]
+    fn excludes_public_keys_and_short_tokens() {
+        for value in ["ghp_short", "AKIA123", "-----BEGIN PUBLIC KEY-----\nabc\n-----END PUBLIC KEY-----"] {
+            assert!(!RegexRedactor::new().redact_sync(value).matches.iter().any(|m| m.kind == "secret"));
+        }
     }
 }

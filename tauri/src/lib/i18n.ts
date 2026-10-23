@@ -259,6 +259,8 @@ export const uiCopy = {
       noTasksYet: "No tasks yet",
     },
     notices: {
+      pdfVerificationLimited: "Text-only check (not a safety guarantee). Residual matches:",
+      pdfVerificationSaveFailed: "PDF saved, but the verification report could not be saved.",
       unsupportedIgnored: "unsupported file(s) ignored.",
       downloaded: "Downloaded",
       saved: "Saved",
@@ -536,6 +538,8 @@ export const uiCopy = {
       noTasksYet: "작업이 없습니다",
     },
     notices: {
+      pdfVerificationLimited: "텍스트만 검사했으며 안전을 보장하지 않습니다. 남은 탐지 수:",
+      pdfVerificationSaveFailed: "PDF는 저장했지만 검증 보고서는 저장하지 못했습니다.",
       unsupportedIgnored: "지원하지 않는 파일을 무시했습니다.",
       downloaded: "다운로드됨",
       saved: "저장됨",
@@ -814,6 +818,8 @@ export const uiCopy = {
       noTasksYet: "タスクはまだありません",
     },
     notices: {
+      pdfVerificationLimited: "テキストのみの検査で、安全性の保証ではありません。残存検出数:",
+      pdfVerificationSaveFailed: "PDFは保存しましたが、検証レポートを保存できませんでした。",
       unsupportedIgnored: "未対応のファイルを無視しました。",
       downloaded: "ダウンロードしました",
       saved: "保存しました",

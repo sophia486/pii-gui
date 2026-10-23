@@ -1,0 +1,54 @@
+name: Feature request
+description: Suggest an improvement or a new capability for PII GUI
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. Please describe the use case, not only the implementation.
+
+        **Do not paste real personal data.** Use synthetic examples and never attach production documents or unredacted exports.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What are you trying to do, and what gets in the way today?
+      placeholder: I review contracts in Japanese and need address detection on scanned PDFs.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What you would like PII GUI to do.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other tools, workarounds or approaches you have tried.
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Detection quality or new entity types
+        - PDF import and redaction export
+        - Markdown and plain text workflow
+        - Detection backends and models
+        - User interface or accessibility
+        - Performance on large documents
+        - Localization
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Screenshots, examples with synthetic data, or related issues.
+    validations:
+      required: false

@@ -1,0 +1,100 @@
+name: Bug report
+description: Report a reproducible bug in PII GUI
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug.
+
+        **Do not paste real personal data.** Replace names, emails, phone numbers, addresses and document text with synthetic examples, and never attach production documents or unredacted exports.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: Loading a large PDF with the ONNX backend stops after the first page.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open PII GUI
+        2. Load sample.pdf
+        3. Choose the OpenAI Privacy Filter backend
+        4. Start detection
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected PII GUI to do.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What PII GUI did instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Windows
+        - Linux
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: PII GUI version
+      description: The version you are running, for example 0.1.2.
+      placeholder: 0.1.2
+    validations:
+      required: true
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Detection backend
+      options:
+        - Regex (built-in)
+        - OpenAI Privacy Filter (ONNX)
+        - BardsAI EU PII (ONNX)
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: input-type
+    attributes:
+      label: Input type
+      options:
+        - PDF
+        - Markdown
+        - Plain text
+        - Not related to an input file
+    validations:
+      required: false
+  - type: textarea
+    id: sample
+    attributes:
+      label: Minimal PII-free sample
+      description: If the bug depends on the input, describe a synthetic sample. Do not attach real personal data.
+      placeholder: A two-page PDF where page 2 contains a synthetic email address.
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Optional. Remove any personal data before posting.
+      render: shell
+    validations:
+      required: false
