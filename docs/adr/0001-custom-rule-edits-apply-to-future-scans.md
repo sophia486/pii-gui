@@ -1,0 +1,3 @@
+# Custom rule edits apply to future scans only
+
+Editing a custom rule changes its name, mode, or pattern for new redaction tasks, but does not recompute matches in already-open tabs: existing matches keep the rule name (their `kind`) from scan time. Recomputing open tabs would require re-running detection on every edit and would silently mutate user review state, so future-only keeps edits non-destructive. Considered re-applying to open tabs and prompting on save; rejected for complexity and surprise.

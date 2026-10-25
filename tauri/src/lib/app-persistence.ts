@@ -11,6 +11,8 @@ import type {
   PiiMatchSelection,
 } from "./redaction-policy";
 
+const CUSTOM_RULES_META_KEY = "custom_rules_persisted";
+
 export type PersistedTab = {
   id: string;
   title: string;
@@ -140,7 +142,7 @@ export async function initAppPersistence({
   }
 
   let customRules = await loadCustomRules();
-  if (customRules.length === 0) {
+  if (customRules.length === 0 && !(await customRulesEverPersisted())) {
     customRules = seedCustomRules;
     await persistCustomRules(customRules);
   }
@@ -243,6 +245,13 @@ export async function persistCustomRules(rules: PiiCustomRule[]) {
   const db = await database();
   const now = Date.now();
 
+  // Mark the list as persisted before touching the rows: if the process dies
+  // mid-write, the empty table is still flagged and defaults won't resurrect.
+  await db.execute(
+    `INSERT OR REPLACE INTO app_meta (id, value) VALUES ($1, $2)`,
+    [CUSTOM_RULES_META_KEY, "1"],
+  );
+
   await db.execute("DELETE FROM custom_rules");
 
   for (const rule of rules) {
@@ -257,6 +266,14 @@ export async function persistCustomRules(rules: PiiCustomRule[]) {
       [rule.id, rule.name, rule.mode, rule.pattern, now],
     );
   }
+}
+
+async function customRulesEverPersisted() {
+  const db = await database();
+  const rows = await db.select<Array<{ id: string }>>(
+    `SELECT id FROM app_meta WHERE id = '${CUSTOM_RULES_META_KEY}'`,
+  );
+  return rows.length > 0;
 }
 
 export async function persistPiiTaskResult(task: PiiTaskRecord) {
@@ -500,6 +517,12 @@ async function ensureSchema() {
       mode TEXT NOT NULL,
       pattern TEXT NOT NULL,
       updated_at INTEGER NOT NULL
+    )`,
+  );
+  await db.execute(
+    `CREATE TABLE IF NOT EXISTS app_meta (
+      id TEXT PRIMARY KEY,
+      value TEXT NOT NULL
     )`,
   );
   await db.execute(

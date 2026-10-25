@@ -1,0 +1,3 @@
+# An empty custom rule list is a valid persisted state
+
+If the user deletes every custom rule, the list must stay empty across restarts. The snapshot loader currently seeds the default rules whenever the table is empty, which would resurrect defaults after an explicit delete-all. We will mark the list as intentionally specified (a persistence flag) so seeding runs only for first-time users. Considered accepting resurrection; rejected — it contradicts the user's explicit choice.

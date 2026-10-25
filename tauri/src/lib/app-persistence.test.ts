@@ -106,4 +106,17 @@ describe("app persistence", () => {
 
     expect(fake.tables.get("custom_rules")).toHaveLength(1);
   });
+
+  it("respects an explicitly emptied rule list on the next launch", async () => {
+    await persistCustomRules([]);
+
+    const snapshot = await initAppPersistence({
+      seedTabs: [],
+      seedCustomRules: [
+        { id: "r1", name: "account", mode: "regex", pattern: "ACME-\\d+" },
+      ],
+    });
+
+    expect(snapshot?.customRules).toEqual([]);
+  });
 });

@@ -303,3 +303,46 @@ function customMatch(
 function compareMatches(a: PiiMatch, b: PiiMatch) {
   return a.start - b.start || a.end - b.end || a.id.localeCompare(b.id);
 }
+
+export function updateCustomRule(
+  rules: PiiCustomRule[],
+  ruleId: string,
+  patch: Partial<Pick<PiiCustomRule, "name" | "mode" | "pattern">>,
+): PiiCustomRule[] {
+  const index = rules.findIndex((rule) => rule.id === ruleId);
+  if (index === -1) return rules;
+
+  return rules.map((rule, at) => (at === index ? { ...rule, ...patch } : rule));
+}
+
+/** The rule that would match exactly like `candidate`, if any. Saving such a
+ * rule would only duplicate every match, so the add and edit dialogs block it.
+ * `exceptId` lets an edited rule keep its own pattern.
+ */
+export function findDuplicateCustomRule(
+  rules: PiiCustomRule[],
+  candidate: Pick<PiiCustomRule, "mode" | "pattern">,
+  exceptId?: string | null,
+) {
+  const pattern = candidate.pattern.trim();
+  if (!pattern) return null;
+
+  return (
+    rules.find(
+      (rule) =>
+        rule.id !== exceptId &&
+        rule.mode === candidate.mode &&
+        rule.pattern.trim() === pattern,
+    ) ?? null
+  );
+}
+
+export function removeCustomRule(
+  rules: PiiCustomRule[],
+  ruleId: string,
+): PiiCustomRule[] {
+  const index = rules.findIndex((rule) => rule.id === ruleId);
+  if (index === -1) return rules;
+
+  return rules.filter((rule) => rule.id !== ruleId);
+}

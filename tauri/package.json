@@ -1,7 +1,7 @@
 {
   "name": "pii-gui",
   "private": true,
-  "version": "0.1.3",
+  "version": "0.1.4",
   "license": "AGPL-3.0-only",
   "author": "PII GUI <btw.sophia@gmail.com>",
   "type": "module",

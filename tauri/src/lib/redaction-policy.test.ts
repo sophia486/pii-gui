@@ -7,10 +7,14 @@ import {
   createRedactedTextSegments,
   createRestoredTextSegments,
   deterministicIndexId,
+  findDuplicateCustomRule,
   formatRedactedText,
   mergePiiMatches,
+  removeCustomRule,
   replacementLabel,
   restorePiiText,
+  updateCustomRule,
+  type PiiCustomRule,
   type PiiMatch,
 } from "./redaction-policy";
 
@@ -263,5 +267,96 @@ describe("redaction policy", () => {
     expect(
       segments.filter((segment) => segment.matches.length > 0),
     ).toHaveLength(1);
+  });
+});
+
+describe("custom rule editing", () => {
+  const rules: PiiCustomRule[] = [
+    { id: "rule-1", name: "Token", mode: "exact", pattern: "secret-token" },
+    { id: "rule-2", name: "Code", mode: "regex", pattern: "ABC-\\d+" },
+  ];
+
+  it("updates name, mode and pattern of the matching rule, keeping its id", () => {
+    const next = updateCustomRule(rules, "rule-1", {
+      name: "Renamed",
+      mode: "regex",
+      pattern: "token-\\d+",
+    });
+
+    expect(next).toEqual([
+      { id: "rule-1", name: "Renamed", mode: "regex", pattern: "token-\\d+" },
+      { id: "rule-2", name: "Code", mode: "regex", pattern: "ABC-\\d+" },
+    ]);
+    expect(next[0].id).toBe("rule-1");
+  });
+
+  it("leaves other rules untouched and returns a new array", () => {
+    const next = updateCustomRule(rules, "rule-2", { name: "Code v2" });
+
+    expect(next).not.toBe(rules);
+    expect(next[0]).toBe(rules[0]);
+    expect(next[1]).toEqual({ ...rules[1], name: "Code v2" });
+  });
+
+  it("returns the same collection when the rule id is unknown", () => {
+    expect(updateCustomRule(rules, "missing", { name: "X" })).toBe(rules);
+  });
+
+  it("removes the rule with the given id, keeping the others in order", () => {
+    expect(removeCustomRule(rules, "rule-1")).toEqual([rules[1]]);
+  });
+
+  it("returns the same collection when removing an unknown id", () => {
+    expect(removeCustomRule(rules, "missing")).toBe(rules);
+  });
+});
+
+describe("duplicate custom rules", () => {
+  const rules: PiiCustomRule[] = [
+    { id: "rule-1", name: "Token", mode: "exact", pattern: "secret-token" },
+    { id: "rule-2", name: "Code", mode: "regex", pattern: "ABC-\\d+" },
+  ];
+
+  it("finds a rule that would match the same text", () => {
+    expect(
+      findDuplicateCustomRule(rules, { mode: "exact", pattern: "secret-token" }),
+    ).toEqual(rules[0]);
+    expect(
+      findDuplicateCustomRule(rules, { mode: "regex", pattern: "ABC-\\d+" }),
+    ).toEqual(rules[1]);
+  });
+
+  it("ignores surrounding whitespace in the pattern", () => {
+    expect(
+      findDuplicateCustomRule(rules, {
+        mode: "exact",
+        pattern: "  secret-token ",
+      }),
+    ).toEqual(rules[0]);
+  });
+
+  it("does not report the rule being edited as its own duplicate", () => {
+    expect(
+      findDuplicateCustomRule(
+        rules,
+        { mode: "exact", pattern: "secret-token" },
+        "rule-1",
+      ),
+    ).toBeNull();
+  });
+
+  it("treats the same pattern in another mode as a different rule", () => {
+    expect(
+      findDuplicateCustomRule(rules, { mode: "regex", pattern: "secret-token" }),
+    ).toBeNull();
+  });
+
+  it("reports nothing for a new pattern or an empty one", () => {
+    expect(
+      findDuplicateCustomRule(rules, { mode: "exact", pattern: "invoice-id" }),
+    ).toBeNull();
+    expect(
+      findDuplicateCustomRule(rules, { mode: "exact", pattern: "   " }),
+    ).toBeNull();
   });
 });
