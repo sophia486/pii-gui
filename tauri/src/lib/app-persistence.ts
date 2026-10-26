@@ -232,7 +232,7 @@ async function deleteTabsNotIn(db: DatabaseConnection, keepIds: string[]) {
     return;
   }
 
-  const placeholders = keepIds.map((_, index) => `${index + 1}`).join(", ");
+  const placeholders = keepIds.map((_, index) => `$${index + 1}`).join(", ");
   await db.execute(
     `DELETE FROM tabs WHERE id NOT IN (${placeholders})`,
     keepIds,

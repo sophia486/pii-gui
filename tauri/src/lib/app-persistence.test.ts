@@ -85,6 +85,9 @@ describe("app persistence", () => {
     await persistTabs([tab("b", "B")]);
 
     expect(fake.tables.get("tabs")?.map((row) => row.id)).toEqual(["b"]);
+    expect(fake.statements).toContain(
+      "DELETE FROM tabs WHERE id NOT IN ($1)",
+    );
   });
 
   it("keeps closed tabs separately", async () => {
