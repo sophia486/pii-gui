@@ -772,7 +772,6 @@ function appUpdateStatusLabel(status: AppUpdateStatus, copy: UiCopy) {
 function appUpdateDescription(
   status: AppUpdateStatus,
   version: string | undefined,
-  error: string | undefined,
   copy: UiCopy,
 ) {
   switch (status) {
@@ -787,7 +786,7 @@ function appUpdateDescription(
     case "downloading":
       return copy.settings.updatingAppDescription;
     case "error":
-      return error ?? copy.settings.updateErrorDescription;
+      return copy.settings.updateErrorDescription;
     case "unavailable":
       return copy.settings.updateUnavailableDescription;
     case "not-checked":
@@ -917,7 +916,6 @@ function SettingsPage({
   const updaterDescription = appUpdateDescription(
     appUpdateStatus,
     appUpdateVersion,
-    appUpdateError,
     copy,
   );
   const modelOptions: Array<{
@@ -1351,7 +1349,7 @@ function SettingsPage({
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-medium">{copy.settings.appUpdates}</p>
-                  <Badge variant="outline">
+                  <Badge variant="outline" title={appUpdateError}>
                     {appUpdateStatusLabel(appUpdateStatus, copy)}
                   </Badge>
                 </div>
