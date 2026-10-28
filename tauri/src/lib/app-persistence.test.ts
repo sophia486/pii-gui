@@ -90,6 +90,16 @@ describe("app persistence", () => {
     );
   });
 
+  it("binds multiple retained tab IDs when pruning removed tabs", async () => {
+    await persistTabs([tab("a", "A"), tab("b", "B"), tab("c", "C")]);
+    await persistTabs([tab("a", "A"), tab("c", "C")]);
+
+    expect(fake.tables.get("tabs")?.map((row) => row.id)).toEqual(["a", "c"]);
+    expect(fake.statements).toContain(
+      "DELETE FROM tabs WHERE id NOT IN ($1, $2)",
+    );
+  });
+
   it("keeps closed tabs separately", async () => {
     await persistTabs([tab("a", "A")], [tab("c", "C")]);
 
