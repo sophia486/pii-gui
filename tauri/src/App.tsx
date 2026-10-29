@@ -2716,9 +2716,20 @@ function App() {
       setNotice(`${unsupportedCount} ${copy.notices.unsupportedIgnored}`);
     }
 
+    const documents = await Promise.all(
+      supportedFiles.map(async (file) => {
+        try {
+          return await readBrowserImportFile(file);
+        } catch (error) {
+          setNotice(error instanceof Error ? error.message : String(error));
+          return undefined;
+        }
+      }),
+    );
+
     queueDocuments(
-      await Promise.all(
-        supportedFiles.map((file) => readBrowserImportFile(file)),
+      documents.filter(
+        (document): document is ImportedDocument => document !== undefined,
       ),
     );
   }
