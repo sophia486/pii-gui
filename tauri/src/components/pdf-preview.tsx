@@ -41,17 +41,17 @@ export function PdfPreview({
 
   useEffect(() => {
     let cancelled = false;
+    let loadingTask: ReturnType<typeof pdfjs.getDocument> | undefined;
     const currentRenderKey = renderKey.current + 1;
     renderKey.current = currentRenderKey;
     setPages([]);
     setError(undefined);
 
     async function renderPages() {
-      const loadingTask = pdfjs.getDocument({
-        data: base64ToUint8Array(document.dataBase64),
-      });
-
       try {
+        loadingTask = pdfjs.getDocument({
+          data: base64ToUint8Array(document.dataBase64),
+        });
         const pdf = await loadingTask.promise;
         const nextPages: RenderedPage[] = [];
 
@@ -96,6 +96,7 @@ export function PdfPreview({
 
     return () => {
       cancelled = true;
+      void loadingTask?.destroy();
     };
   }, [document.dataBase64, scale]);
 
