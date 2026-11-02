@@ -117,6 +117,34 @@ describe("redaction policy", () => {
     expect(output).toBe("Secret: sk_$&value");
   });
 
+  it("does not consume a later token embedded in a restored value", () => {
+    const tokenMatches: PiiMatch[] = [
+      {
+        id: "secret-0",
+        kind: "Secret",
+        value: "[SECRET:2]",
+        start: 0,
+        end: 10,
+      },
+      {
+        id: "secret-1",
+        kind: "Secret",
+        value: "actual-secret",
+        start: 10,
+        end: 20,
+      },
+    ];
+    const input = "[SECRET:1][SECRET:2]";
+    const output = restorePiiText({
+      input,
+      matches: tokenMatches,
+      selection: createMatchSelection(tokenMatches),
+      indexFormat: "number",
+    });
+
+    expect(output).toBe("[SECRET:2]actual-secret");
+  });
+
   it("adds exact and regex custom rule matches", () => {
     const customMatches = applyCustomRules("Code ABC-123 and secret-token", [
       {
