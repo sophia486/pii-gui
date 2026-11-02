@@ -98,16 +98,15 @@ export function restorePiiText({
   selection: PiiMatchSelection;
   indexFormat: PiiIndexFormat;
 }) {
-  let output = input;
-
-  selectedPiiMatches(matches, selection).forEach((match, index) => {
-    output = output.replace(
-      replacementLabel(match.kind, index + 1, indexFormat),
-      () => match.value,
-    );
-  });
-
-  return output;
+  return createRestoredTextSegments({
+    input,
+    matches,
+    selection,
+    indexFormat,
+    emit: "values",
+  })
+    .map((segment) => segment.text)
+    .join("");
 }
 
 export function createRedactedTextSegments({
