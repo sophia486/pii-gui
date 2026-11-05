@@ -210,9 +210,9 @@ describe("redaction policy", () => {
     expect(segments.map((segment) => segment.text).join("")).toBe(
       "Email: [EMAIL] Tel: [PHONE]",
     );
-    expect(segments.filter((segment) => segment.matches.length > 0)).toHaveLength(
-      2,
-    );
+    expect(
+      segments.filter((segment) => segment.matches.length > 0),
+    ).toHaveLength(2);
   });
 
   it("segments restore input around replacement tokens", () => {
@@ -271,7 +271,12 @@ describe("redaction policy", () => {
     });
 
     expect(segments.map((segment) => segment.text).join("")).toBe(
-      restorePiiText({ input, matches: emails, selection, indexFormat: "none" }),
+      restorePiiText({
+        input,
+        matches: emails,
+        selection,
+        indexFormat: "none",
+      }),
     );
     expect(
       segments
@@ -347,7 +352,10 @@ describe("duplicate custom rules", () => {
 
   it("finds a rule that would match the same text", () => {
     expect(
-      findDuplicateCustomRule(rules, { mode: "exact", pattern: "secret-token" }),
+      findDuplicateCustomRule(rules, {
+        mode: "exact",
+        pattern: "secret-token",
+      }),
     ).toEqual(rules[0]);
     expect(
       findDuplicateCustomRule(rules, { mode: "regex", pattern: "ABC-\\d+" }),
@@ -375,7 +383,10 @@ describe("duplicate custom rules", () => {
 
   it("treats the same pattern in another mode as a different rule", () => {
     expect(
-      findDuplicateCustomRule(rules, { mode: "regex", pattern: "secret-token" }),
+      findDuplicateCustomRule(rules, {
+        mode: "regex",
+        pattern: "secret-token",
+      }),
     ).toBeNull();
   });
 
