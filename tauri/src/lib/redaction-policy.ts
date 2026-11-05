@@ -300,7 +300,7 @@ function customMatch(
 }
 
 function compareMatches(a: PiiMatch, b: PiiMatch) {
-  return a.start - b.start || a.end - b.end || a.id.localeCompare(b.id);
+  return a.start - b.start || b.end - a.end || a.id.localeCompare(b.id);
 }
 
 export function updateCustomRule(
