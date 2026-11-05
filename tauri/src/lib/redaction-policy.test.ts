@@ -388,3 +388,44 @@ describe("duplicate custom rules", () => {
     ).toBeNull();
   });
 });
+
+describe("overlapping PII matches", () => {
+  it("redacts and restores the full span of overlapping account-number matches", () => {
+    const accountNumber = "1234567890123456";
+    const input = `Account number: ${accountNumber}`;
+    const start = input.indexOf(accountNumber);
+    const accountMatches: PiiMatch[] = [
+      {
+        id: "account-number-prefix",
+        kind: "AccountNumber",
+        value: accountNumber.slice(0, 10),
+        start,
+        end: start + 10,
+      },
+      {
+        id: "account-number-full",
+        kind: "AccountNumber",
+        value: accountNumber,
+        start,
+        end: start + accountNumber.length,
+      },
+    ];
+    const selection = createMatchSelection(accountMatches);
+    const redacted = formatRedactedText({
+      input,
+      matches: accountMatches,
+      selection,
+      indexFormat: "number",
+    });
+
+    expect(redacted).toBe("Account number: [ACCOUNTNUMBER:1]");
+    expect(
+      restorePiiText({
+        input: redacted,
+        matches: accountMatches,
+        selection,
+        indexFormat: "number",
+      }),
+    ).toBe(input);
+  });
+});
