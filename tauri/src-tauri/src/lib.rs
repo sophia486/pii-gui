@@ -249,6 +249,20 @@ fn read_import_file(path: &str) -> Result<ImportFile, String> {
         });
     }
 
+    if is_text_path(path_ref) {
+        let contents = fs::read_to_string(path_ref)
+            .map_err(|error| format!("Failed to read text file: {error}"))?;
+
+        // Plain text shares the chunked non-PDF import path with Markdown.
+        return Ok(ImportFile {
+            path: path.to_string(),
+            file_name,
+            kind: "markdown".to_string(),
+            contents: Some(contents),
+            data_base64: None,
+        });
+    }
+
     if is_pdf_path(path_ref) {
         let bytes =
             fs::read(path_ref).map_err(|error| format!("Failed to read PDF file: {error}"))?;
@@ -262,7 +276,7 @@ fn read_import_file(path: &str) -> Result<ImportFile, String> {
         });
     }
 
-    Err("Only Markdown and PDF files are supported.".to_string())
+    Err("Only Markdown, text and PDF files are supported.".to_string())
 }
 
 #[tauri::command]
@@ -898,6 +912,13 @@ fn is_markdown_path(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
+fn is_text_path(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .map(|extension| matches!(extension.to_ascii_lowercase().as_str(), "txt" | "text"))
+        .unwrap_or(false)
+}
+
 fn is_pdf_path(path: &Path) -> bool {
     path.extension()
         .and_then(|extension| extension.to_str())
@@ -1003,6 +1024,7 @@ pub fn run() {
 mod tests {
     use super::{
         clear_process_model_path, count_stored_files, hex_digest, is_markdown_path, is_pdf_path,
+        is_text_path,
         model_checkpoint_dir, normalize_hash_value, write_binary_file_path_inner,
         write_pii_filter_result_file, write_text_file, write_text_file_path, ContentHasher,
         DownloadModel, SHA1_HEX_LEN, SHA256_HEX_LEN,
@@ -1023,6 +1045,15 @@ mod tests {
     fn recognizes_supported_pdf_extension() {
         assert!(is_pdf_path(Path::new("report.pdf")));
         assert!(is_pdf_path(Path::new("report.PDF")));
+    }
+
+    #[test]
+    fn recognizes_supported_text_extensions() {
+        assert!(is_text_path(Path::new("notes.txt")));
+        assert!(is_text_path(Path::new("NOTES.TXT")));
+        assert!(is_text_path(Path::new("notes.text")));
+        assert!(!is_text_path(Path::new("notes.md")));
+        assert!(!is_text_path(Path::new("notes")));
     }
 
     #[test]
