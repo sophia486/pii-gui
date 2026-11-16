@@ -145,6 +145,7 @@ import {
   type PiiTextChunk,
 } from "@/lib/pii-text-chunks";
 import { uiCopy, type AppLanguage, type UiCopy } from "@/lib/i18n";
+import { isImportableTextFileName } from "@/lib/import-files";
 
 type WorkTab = {
   id: string;
@@ -445,12 +446,8 @@ function fileNameFromPath(path: string) {
   return path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 }
 
-function isMarkdownFileName(fileName: string) {
-  return /\.(md|markdown)$/i.test(fileName);
-}
-
 function isSupportedImportFileName(fileName: string) {
-  return isMarkdownFileName(fileName) || isPdfFileName(fileName);
+  return isImportableTextFileName(fileName) || isPdfFileName(fileName);
 }
 
 function wordCount(text: string) {
@@ -2746,6 +2743,10 @@ function App() {
               extensions: ["md", "markdown"],
             },
             {
+              name: "Text",
+              extensions: ["txt", "text"],
+            },
+            {
               name: "PDF",
               extensions: ["pdf"],
             },
@@ -2768,7 +2769,7 @@ function App() {
 
     const fileInput = document.createElement("input");
     fileInput.type = "file";
-    fileInput.accept = ".md,.markdown,text/markdown,.pdf,application/pdf";
+    fileInput.accept = ".md,.markdown,text/markdown,.txt,text/plain,.pdf,application/pdf";
     fileInput.multiple = true;
     fileInput.style.display = "none";
     fileInput.addEventListener(
