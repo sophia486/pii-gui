@@ -1,3 +1,7 @@
+/** Accepted file types for the browser fallback import picker. */
+export const browserImportAccept =
+  ".md,.markdown,text/markdown,.txt,.text,text/plain,.pdf,application/pdf";
+
 /** File-name helpers shared by the native, browser and drag-drop import paths. */
 
 const markdownExtensions = new Set(["md", "markdown"]);
