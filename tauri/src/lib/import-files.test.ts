@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  browserImportAccept,
   fileExtension,
   isImportableTextFileName,
   isMarkdownFileName,
@@ -8,6 +9,16 @@ import {
 } from "./import-files";
 
 describe("import file names", () => {
+  it("includes supported explicit file extensions in the browser picker", () => {
+    const acceptedTypes = browserImportAccept.split(",");
+    for (const extension of [".md", ".markdown", ".txt", ".text", ".pdf"]) {
+      expect(acceptedTypes).toContain(extension);
+    }
+    expect(acceptedTypes).toContain("text/markdown");
+    expect(acceptedTypes).toContain("text/plain");
+    expect(acceptedTypes).toContain("application/pdf");
+  });
+
   it("reads a lowercase extension from the last path segment", () => {
     expect(fileExtension("notes.md")).toBe("md");
     expect(fileExtension("/tmp/docs/Notes.MARKDOWN")).toBe("markdown");

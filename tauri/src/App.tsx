@@ -145,7 +145,7 @@ import {
   type PiiTextChunk,
 } from "@/lib/pii-text-chunks";
 import { uiCopy, type AppLanguage, type UiCopy } from "@/lib/i18n";
-import { isImportableTextFileName } from "@/lib/import-files";
+import { browserImportAccept, isImportableTextFileName } from "@/lib/import-files";
 
 type WorkTab = {
   id: string;
@@ -2769,7 +2769,7 @@ function App() {
 
     const fileInput = document.createElement("input");
     fileInput.type = "file";
-    fileInput.accept = ".md,.markdown,text/markdown,.txt,text/plain,.pdf,application/pdf";
+    fileInput.accept = browserImportAccept;
     fileInput.multiple = true;
     fileInput.style.display = "none";
     fileInput.addEventListener(
